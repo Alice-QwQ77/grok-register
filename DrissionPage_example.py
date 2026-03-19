@@ -135,6 +135,20 @@ _sso_dir = os.path.join(os.path.dirname(__file__), "sso")
 _sso_ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 DEFAULT_SSO_FILE = os.path.join(_sso_dir, f"sso_{_sso_ts}.txt")
 
+FIRST_NAMES = [
+    "Ethan", "Liam", "Noah", "Mason", "Lucas", "Logan", "Aiden", "Elijah",
+    "James", "Henry", "Owen", "Jack", "Levi", "Leo", "Ezra", "Wyatt",
+    "Olivia", "Emma", "Ava", "Sophia", "Mia", "Isabella", "Amelia", "Harper",
+    "Evelyn", "Abigail", "Ella", "Grace", "Chloe", "Lily", "Hannah", "Nora",
+]
+
+LAST_NAMES = [
+    "Smith", "Johnson", "Brown", "Taylor", "Anderson", "Thomas", "Jackson", "White",
+    "Harris", "Martin", "Thompson", "Moore", "Walker", "Young", "Allen", "King",
+    "Wright", "Scott", "Green", "Baker", "Adams", "Nelson", "Carter", "Mitchell",
+    "Perez", "Roberts", "Turner", "Phillips", "Campbell", "Parker", "Evans", "Edwards",
+]
+
 
 def start_browser():
     # 每轮从全新浏览器开始，使用独立临时 profile 目录避免 Cookie/Session 复用。
@@ -693,9 +707,9 @@ Object.defineProperty(MouseEvent.prototype, 'screenY', { value: screenY });
 
 
 def build_profile():
-    # 生成一组可重复使用的注册资料，密码至少包含大小写、数字和特殊字符。
-    given_name = "Neo"
-    family_name = "Lin"
+    # 每轮随机组合姓名，避免固定资料过于重复。
+    given_name = secrets.choice(FIRST_NAMES)
+    family_name = secrets.choice(LAST_NAMES)
     password = "N" + secrets.token_hex(4) + "!a7#" + secrets.token_urlsafe(6)
     return given_name, family_name, password
 
