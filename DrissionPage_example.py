@@ -11,6 +11,7 @@ import secrets
 import sys
 
 from email_register import get_email_and_token, get_oai_code
+from config_loader import get_config_value, load_config
 
 
 def setup_run_logger() -> logging.Logger:
@@ -90,17 +91,14 @@ co.set_argument("--disable-gpu")
 co.set_argument("--disable-dev-shm-usage")
 co.set_argument("--disable-software-rasterizer")
 
-# 从 config.json 读取代理配置给浏览器
-_browser_proxy = ""
-try:
-    import json as _json_mod
-    _cfg_path = os.path.join(os.path.dirname(__file__), "config.json")
-    if os.path.isfile(_cfg_path):
-        with open(_cfg_path, "r") as _f:
-            _cfg = _json_mod.load(_f)
-        _browser_proxy = str(_cfg.get("browser_proxy", "") or _cfg.get("proxy", "") or "")
-except Exception:
-    pass
+_project_config = load_config()
+
+# 优先从环境变量/配置读取代理配置给浏览器
+_browser_proxy = str(
+    get_config_value(_project_config, "browser_proxy", "")
+    or get_config_value(_project_config, "proxy", "")
+    or ""
+)
 if _browser_proxy:
     co.set_proxy(_browser_proxy)
     print(f"[*] 浏览器代理: {_browser_proxy}")
@@ -1064,23 +1062,14 @@ def push_sso_to_api(new_tokens: list):
     # 推送 SSO token 到 grok2api 管理接口。
     # append=false：直接将本次 token 列表全量推送（覆盖）。
     # append=true（默认）：先 GET 查询线上现有 token，合并本次后全量推送。
-    import json
     import urllib3
     import requests
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-    config_path = os.path.join(os.path.dirname(__file__), "config.json")
-    try:
-        with open(config_path, "r", encoding="utf-8") as f:
-            conf = json.load(f)
-    except Exception as e:
-        print(f"[Warn] 读取 config.json 失败，跳过推送: {e}")
-        return
-
-    api_conf = conf.get("api", {})
-    endpoint = str(api_conf.get("endpoint", "")).strip()
-    api_token = str(api_conf.get("token", "")).strip()
-    append_mode = api_conf.get("append", True)
+    conf = load_config()
+    endpoint = str(get_config_value(conf, "api.endpoint", "")).strip()
+    api_token = str(get_config_value(conf, "api.token", "")).strip()
+    append_mode = bool(get_config_value(conf, "api.append", True))
 
     if not endpoint or not api_token:
         return
@@ -1169,13 +1158,10 @@ def run_single_registration(output_path=DEFAULT_SSO_FILE, extract_numbers=False)
 
 
 def load_run_count() -> int:
-    # 从 config.json 读取默认执行轮数，配置不存在时返回 10。
-    config_path = os.path.join(os.path.dirname(__file__), "config.json")
+    # 从环境变量/配置读取默认执行轮数，配置不存在时返回 10。
     try:
-        import json
-        with open(config_path, "r", encoding="utf-8") as f:
-            conf = json.load(f)
-        v = conf.get("run", {}).get("count")
+        conf = load_config()
+        v = get_config_value(conf, "run.count")
         if isinstance(v, int) and v >= 0:
             return v
     except Exception:

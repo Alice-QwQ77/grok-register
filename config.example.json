@@ -2,8 +2,14 @@
     "run": {
         "count": 10
     },
+    "email_provider": "duckmail",
     "duckmail_api_base": "https://api.duckmail.sbs",
     "duckmail_bearer": "<your_duckmail_bearer_token>",
+    "temp_mail_api_base": "https://temp-mail-api.deno.dev",
+    "temp_mail_api_key": "<your_temp_mail_api_key>",
+    "temp_mail_provider": "",
+    "temp_mail_domain": "",
+    "temp_mail_prefix": "",
     "proxy": "",
     "browser_proxy": "",
     "api": {
