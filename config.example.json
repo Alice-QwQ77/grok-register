@@ -12,6 +12,13 @@
     "temp_mail_prefix": "",
     "proxy": "",
     "browser_proxy": "",
+    "webui": {
+        "host": "127.0.0.1",
+        "port": 8780,
+        "username": "admin",
+        "password": "change_me",
+        "secret_key": "change_this_webui_secret"
+    },
     "api": {
         "endpoint": "",
         "token": "",

@@ -54,6 +54,11 @@ def load_config() -> Dict[str, Any]:
         "API_ENDPOINT": ("api.endpoint", str),
         "API_TOKEN": ("api.token", str),
         "API_APPEND": ("api.append", _parse_bool),
+        "WEBUI_HOST": ("webui.host", str),
+        "WEBUI_PORT": ("webui.port", int),
+        "WEBUI_USERNAME": ("webui.username", str),
+        "WEBUI_PASSWORD": ("webui.password", str),
+        "WEBUI_SECRET_KEY": ("webui.secret_key", str),
     }
 
     for env_key, (config_path, caster) in env_mapping.items():

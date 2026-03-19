@@ -72,5 +72,7 @@ COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
     mkdir -p /app/logs /app/sso /app/warp
 
+EXPOSE 8780
+
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["python", "DrissionPage_example.py"]

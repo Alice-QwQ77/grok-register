@@ -43,6 +43,66 @@ pip install playwright && python -m playwright install chromium && python -m pla
 
 ---
 
+## WebUI
+
+项目现在包含一个带登录鉴权的 WebUI 面板，可用于：
+
+- 输入注册数量并启动任务
+- 查看当前运行状态
+- 查看最新运行日志
+- 查看 SSO 文件列表
+- 一键复制当前 SSO 内容
+
+启动方式：
+
+```bash
+python webui.py
+```
+
+默认访问地址：
+
+```text
+http://127.0.0.1:8780
+```
+
+默认登录配置来自 `config.json`：
+
+```json
+{
+  "webui": {
+    "host": "127.0.0.1",
+    "port": 8780,
+    "username": "admin",
+    "password": "change_me",
+    "secret_key": "change_this_webui_secret"
+  }
+}
+```
+
+建议首次使用就修改：
+
+- `webui.username`
+- `webui.password`
+- `webui.secret_key`
+
+如果在 Docker 中运行 WebUI，可以直接覆盖启动命令并映射端口：
+
+```bash
+docker run --rm \
+  -p 8780:8780 \
+  -e GROK_REGISTER_WEBUI_HOST=0.0.0.0 \
+  -e GROK_REGISTER_WEBUI_USERNAME=admin \
+  -e GROK_REGISTER_WEBUI_PASSWORD=change_me \
+  -e GROK_REGISTER_WEBUI_SECRET_KEY=replace_me \
+  -v $(pwd)/warp:/app/warp \
+  -v $(pwd)/logs:/app/logs \
+  -v $(pwd)/sso:/app/sso \
+  grok-register \
+  python webui.py
+```
+
+---
+
 ## Docker
 
 项目现在包含可直接打包的 Dockerfile，已覆盖 Linux 运行依赖：
@@ -182,13 +242,18 @@ cp config.example.json config.json
 | `email_provider` | string | 邮箱服务提供方，可选 `duckmail` 或 `temp-mail-api` |
 | `duckmail_api_base` | string | DuckMail API 地址，默认 `https://api.duckmail.sbs` |
 | `duckmail_bearer` | string | DuckMail Bearer Token（[获取方式](#获取-duckmail-bearer-token)） |
-| `temp_mail_api_base` | string | temp-mail-api 网关地址，默认 `https://temp-mail-api.deno.dev` |
+| `temp_mail_api_base` | string | temp-mail-api 网关地址，默认 `https://temp-mail-api.deno.dev`，也可改成你自己的自部署地址 |
 | `temp_mail_api_key` | string | temp-mail-api 的 API Key |
 | `temp_mail_provider` | string | 指定 temp-mail-api 的 provider 名称（可选） |
 | `temp_mail_domain` | string | 指定 temp-mail-api 生成邮箱时使用的域名（可选） |
 | `temp_mail_prefix` | string | 指定 temp-mail-api 生成邮箱时使用的前缀（可选） |
 | `proxy` | string | 邮箱 API 请求代理（可选） |
 | `browser_proxy` | string | 浏览器代理，无头服务器需翻墙时填写（可选） |
+| `webui.host` | string | WebUI 监听地址，默认 `127.0.0.1` |
+| `webui.port` | int | WebUI 监听端口，默认 `8780` |
+| `webui.username` | string | WebUI 登录用户名 |
+| `webui.password` | string | WebUI 登录密码 |
+| `webui.secret_key` | string | WebUI 会话密钥 |
 | `api.endpoint` | string | grok2api 管理接口地址，留空跳过推送 |
 | `api.token` | string | grok2api 的 `app_key` |
 | `api.append` | bool | `true` 合并线上已有 token，`false` 覆盖 |
@@ -214,6 +279,11 @@ cp config.example.json config.json
 | `GROK_REGISTER_TEMP_MAIL_PREFIX` | `temp_mail_prefix` |
 | `GROK_REGISTER_PROXY` | `proxy` |
 | `GROK_REGISTER_BROWSER_PROXY` | `browser_proxy` |
+| `GROK_REGISTER_WEBUI_HOST` | `webui.host` |
+| `GROK_REGISTER_WEBUI_PORT` | `webui.port` |
+| `GROK_REGISTER_WEBUI_USERNAME` | `webui.username` |
+| `GROK_REGISTER_WEBUI_PASSWORD` | `webui.password` |
+| `GROK_REGISTER_WEBUI_SECRET_KEY` | `webui.secret_key` |
 | `GROK_REGISTER_API_ENDPOINT` | `api.endpoint` |
 | `GROK_REGISTER_API_TOKEN` | `api.token` |
 | `GROK_REGISTER_API_APPEND` | `api.append` |
@@ -249,9 +319,11 @@ python DrissionPage_example.py
 说明：
 
 - `temp_mail_api_key` 为必填，接口使用 `Authorization: Bearer <api-key>` 鉴权
+- `temp_mail_api_base` 默认值是公开演示地址 `https://temp-mail-api.deno.dev`
 - `temp_mail_provider`、`temp_mail_domain`、`temp_mail_prefix` 都是可选项，不填时走服务端默认路由
 - 当前脚本已接入 `GET/POST /api/generate-email`、`GET /api/emails`、`GET /api/email/:id` 这几个收码所需接口
 - 如果同时设置了环境变量，则环境变量会覆盖 `config.json` 中的值
+- 如果你的 temp-mail-api 部署在别的域名或端口，可以通过 `temp_mail_api_base` 或环境变量 `GROK_REGISTER_TEMP_MAIL_API_BASE` 覆盖
 
 ---
 
