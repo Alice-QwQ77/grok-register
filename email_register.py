@@ -50,7 +50,7 @@ def get_email_and_token() -> Tuple[Optional[str], Optional[str]]:
     return None, None
 
 
-def get_oai_code(dev_token: str, email: str, timeout: int = 30) -> Optional[str]:
+def get_oai_code(dev_token: str, email: str, timeout: int = 90) -> Optional[str]:
     """
     轮询临时邮箱获取 OTP 验证码。
     """
