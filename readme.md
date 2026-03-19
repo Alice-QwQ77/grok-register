@@ -216,7 +216,7 @@ cp config.example.json config.json
 
 ```json
 {
-    "run": { "count": 10 },
+    "run": { "count": 10, "restart_browser_every_round": true },
     "email_provider": "duckmail",
     "duckmail_api_base": "https://api.duckmail.sbs",
     "duckmail_bearer": "<your_duckmail_bearer_token>",
@@ -240,6 +240,7 @@ cp config.example.json config.json
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `run.count` | int | 注册轮数，`0` 为无限循环，可通过 `--count` 覆盖 |
+| `run.restart_browser_every_round` | bool | 每轮结束后是否完整重启浏览器，默认 `true`，低配服务器更稳定 |
 | `email_provider` | string | 邮箱服务提供方，可选 `duckmail` 或 `temp-mail-api` |
 | `duckmail_api_base` | string | DuckMail API 地址，默认 `https://api.duckmail.sbs` |
 | `duckmail_bearer` | string | DuckMail Bearer Token（[获取方式](#获取-duckmail-bearer-token)） |
@@ -270,6 +271,7 @@ cp config.example.json config.json
 | 环境变量 | 对应配置项 |
 |------|------|
 | `GROK_REGISTER_RUN_COUNT` | `run.count` |
+| `GROK_REGISTER_RESTART_BROWSER_EVERY_ROUND` | `run.restart_browser_every_round` |
 | `GROK_REGISTER_EMAIL_PROVIDER` | `email_provider` |
 | `GROK_REGISTER_DUCKMAIL_API_BASE` | `duckmail_api_base` |
 | `GROK_REGISTER_DUCKMAIL_BEARER` | `duckmail_bearer` |

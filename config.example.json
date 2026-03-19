@@ -1,6 +1,7 @@
 {
     "run": {
-        "count": 10
+        "count": 10,
+        "restart_browser_every_round": true
     },
     "email_provider": "duckmail",
     "duckmail_api_base": "https://api.duckmail.sbs",

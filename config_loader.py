@@ -41,6 +41,7 @@ def load_config() -> Dict[str, Any]:
 
     env_mapping = {
         "RUN_COUNT": ("run.count", int),
+        "RESTART_BROWSER_EVERY_ROUND": ("run.restart_browser_every_round", _parse_bool),
         "EMAIL_PROVIDER": ("email_provider", str),
         "DUCKMAIL_API_BASE": ("duckmail_api_base", str),
         "DUCKMAIL_BEARER": ("duckmail_bearer", str),

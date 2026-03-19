@@ -1,6 +1,7 @@
 from DrissionPage import Chromium, ChromiumOptions
 from DrissionPage.errors import PageDisconnectedError
 import argparse
+import gc
 import shutil
 import tempfile
 import datetime
@@ -84,14 +85,10 @@ if not os.environ.get("DISPLAY") or os.environ.get("USE_XVFB") == "1":
     except Exception as e:
         print(f"[Warn] Xvfb 启动失败: {e}，将尝试直接运行")
 
-co = ChromiumOptions()
-co.auto_port()
-co.set_argument("--no-sandbox")
-co.set_argument("--disable-gpu")
-co.set_argument("--disable-dev-shm-usage")
-co.set_argument("--disable-software-rasterizer")
-
 _project_config = load_config()
+_restart_browser_every_round = bool(
+    get_config_value(_project_config, "run.restart_browser_every_round", True)
+)
 
 # 优先从环境变量/配置读取代理配置给浏览器
 _browser_proxy = str(
@@ -100,30 +97,26 @@ _browser_proxy = str(
     or ""
 )
 if _browser_proxy:
-    co.set_proxy(_browser_proxy)
     print(f"[*] 浏览器代理: {_browser_proxy}")
 
 # Linux 服务器自动检测 chromium 路径
 import platform
 import shutil
 import glob as _glob_mod
+_linux_browser_path = ""
 if platform.system() == "Linux":
     # 优先用 playwright 装的 chromium（无 AppArmor 限制）
     _pw_chromes = _glob_mod.glob(os.path.expanduser("~/.cache/ms-playwright/chromium-*/chrome-linux*/chrome"))
     if _pw_chromes:
-        co.set_browser_path(_pw_chromes[0])
+        _linux_browser_path = _pw_chromes[0]
     else:
         for _candidate in ["/usr/bin/chromium-browser", "/usr/bin/chromium", "/usr/bin/google-chrome"]:
             if os.path.isfile(_candidate):
-                co.set_browser_path(_candidate)
+                _linux_browser_path = _candidate
                 break
-    # user_data_path 在 start_browser() 每轮动态设置，此处不固定
-
-co.set_timeouts(base=1)
 
 # 加载修复 MouseEvent.screenX / screenY 的扩展。
 EXTENSION_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "turnstilePatch"))
-co.add_extension(EXTENSION_PATH)
 
 _chrome_temp_dir: str = ""
 browser = None
@@ -150,15 +143,68 @@ LAST_NAMES = [
 ]
 
 
+def build_browser_options(user_data_dir: str) -> ChromiumOptions:
+    options = ChromiumOptions()
+    options.auto_port()
+    options.set_argument("--no-sandbox")
+    options.set_argument("--disable-gpu")
+    options.set_argument("--disable-dev-shm-usage")
+    options.set_argument("--disable-software-rasterizer")
+    options.set_argument("--no-first-run")
+    options.set_argument("--no-default-browser-check")
+    options.set_argument("--disable-default-apps")
+    options.set_argument("--disable-background-networking")
+    options.set_argument("--disable-backgrounding-occluded-windows")
+    options.set_argument("--disable-renderer-backgrounding")
+    options.set_argument("--disable-sync")
+    options.set_argument("--mute-audio")
+    options.set_argument("--window-size=1366,768")
+    options.set_timeouts(base=1)
+    options.set_user_data_path(user_data_dir)
+    options.add_extension(EXTENSION_PATH)
+
+    if _browser_proxy:
+        options.set_proxy(_browser_proxy)
+
+    if _linux_browser_path:
+        options.set_browser_path(_linux_browser_path)
+
+    return options
+
+
 def start_browser():
     # 每轮从全新浏览器开始，使用独立临时 profile 目录避免 Cookie/Session 复用。
+    # 低配置机器上浏览器连接偶发失败时，自动重试几次再放弃。
     global browser, page, _chrome_temp_dir
-    _chrome_temp_dir = tempfile.mkdtemp(prefix="chrome_run_")
-    co.set_user_data_path(_chrome_temp_dir)
-    browser = Chromium(co)
-    tabs = browser.get_tabs()
-    page = tabs[-1] if tabs else browser.new_tab()
-    return browser, page
+    stop_browser()
+
+    last_error = None
+    for attempt in range(1, 4):
+        _chrome_temp_dir = tempfile.mkdtemp(prefix="chrome_run_")
+        try:
+            browser = Chromium(build_browser_options(_chrome_temp_dir))
+            tabs = browser.get_tabs()
+            page = tabs[-1] if tabs else browser.new_tab()
+            if attempt > 1:
+                print(f"[*] 浏览器在第 {attempt} 次尝试时启动成功。")
+            return browser, page
+        except Exception as exc:
+            last_error = exc
+            print(f"[Warn] 第 {attempt} 次连接浏览器失败: {exc}")
+            try:
+                if browser is not None:
+                    browser.quit()
+            except Exception:
+                pass
+            browser = None
+            page = None
+            if _chrome_temp_dir and os.path.isdir(_chrome_temp_dir):
+                shutil.rmtree(_chrome_temp_dir, ignore_errors=True)
+            _chrome_temp_dir = ""
+            gc.collect()
+            time.sleep(min(attempt * 2, 5))
+
+    raise Exception(f"连接浏览器失败，已重试 3 次: {last_error}")
 
 
 def stop_browser():
@@ -174,22 +220,28 @@ def stop_browser():
     if _chrome_temp_dir and os.path.isdir(_chrome_temp_dir):
         shutil.rmtree(_chrome_temp_dir, ignore_errors=True)
     _chrome_temp_dir = ""
+    gc.collect()
 
 
 def restart_browser():
-    # 清除 cookie/storage 代替完整重启，节省 Chrome 冷启动时间。
+    # 低配置机器上完整重启比长期复用更稳定；保留配置开关，便于按环境调节。
     global browser, page
-    if browser is None:
-        start_browser()
-        return
-    try:
-        tabs = browser.get_tabs()
-        page = tabs[-1] if tabs else browser.new_tab()
-        page.run_js("window.localStorage.clear(); window.sessionStorage.clear();")
-        page.clear_cache(session_storage=True, cookies=True)
-    except Exception:
-        stop_browser()
-        start_browser()
+    if not _restart_browser_every_round:
+        if browser is None:
+            start_browser()
+            return
+        try:
+            tabs = browser.get_tabs()
+            page = tabs[-1] if tabs else browser.new_tab()
+            page.run_js("window.localStorage.clear(); window.sessionStorage.clear();")
+            page.clear_cache(session_storage=True, cookies=True)
+            return
+        except Exception:
+            pass
+
+    stop_browser()
+    time.sleep(1)
+    start_browser()
 
 
 def refresh_active_page():
