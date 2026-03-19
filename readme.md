@@ -90,7 +90,6 @@ http://127.0.0.1:8780
 ```bash
 docker run --rm \
   -p 8780:8780 \
-  -e GROK_REGISTER_WEBUI_HOST=0.0.0.0 \
   -e GROK_REGISTER_WEBUI_USERNAME=admin \
   -e GROK_REGISTER_WEBUI_PASSWORD=change_me \
   -e GROK_REGISTER_WEBUI_SECRET_KEY=replace_me \
@@ -100,6 +99,8 @@ docker run --rm \
   grok-register \
   python webui.py
 ```
+
+Docker 镜像内默认会把 `GROK_REGISTER_WEBUI_HOST` 设为 `0.0.0.0`，这样映射端口后可直接从宿主机访问；本地直接运行 `python webui.py` 时默认仍是 `127.0.0.1`。
 
 ---
 
